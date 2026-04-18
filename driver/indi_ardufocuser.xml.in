@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<driversList>
+    <devGroup group="Focusers">
+        <device label="ArduFocuser" manufacturer="DIY">
+            <driver name="ArduFocuser">indi_ardufocuser</driver>
+            <version>@ARDUFOCUSER_VERSION_MAJOR@.@ARDUFOCUSER_VERSION_MINOR@</version>
+        </device>
+    </devGroup>
+</driversList>

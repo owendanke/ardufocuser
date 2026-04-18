@@ -1,0 +1,9 @@
+# platformIO build files
+firmware/.pio
+
+# VScode
+.vscode/
+
+# build directory
+build/
+build-*/
