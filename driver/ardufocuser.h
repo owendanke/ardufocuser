@@ -1,5 +1,5 @@
 /**
- * ArduFocuser.h
+ * ardufocuser.h
  * 
  * Copyright (C) 2026 Owen Danke
  * 
@@ -9,6 +9,7 @@
 #pragma once
 
 #include <indifocuser.h>
+#include <connectionplugins/connectionserial.h>
 
 class ArduFocuser : public INDI::Focuser
 { 
@@ -17,13 +18,22 @@ class ArduFocuser : public INDI::Focuser
         ArduFocuser();
         virtual ~ArduFocuser();
 
+        bool initProperties();
+        bool updateProperties();        
+
+        bool Connect();
+        bool Disconnect();
+
         const char *getDefaultName();
 
-        bool initProperties();
-        // bool updateProperties();        
-
-        bool disconnect();
-        bool connect();
-
     private:
+        // std::unique_ptr<FocuserSerial> m_serial;
+
+        bool Handshake() override;
+
+        bool sendCommand(
+            const char *command,
+            char *response,
+            int responseLength
+        );
 };
