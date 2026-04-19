@@ -42,6 +42,19 @@ Install the ArduFocuser INDI driver.
 sudo make install
 ```
 
+I have used PlatformIO to manage the firmware (<- misnomer) libraries and building process.
+To compile the build for the ATMEL 32u4 based Arduino microcontroller,
+install PlatformIO (preferably into VSCode) and open `ardufocuser/firmware` as that is the PlatformIO project directory.
+
+There should be a button in the top right of the editor to build and upload to the selected port.
+
+Alternatively,
+```
+pio run --target upload
+```
+will build the project and upload to the "targets" in the `platformio.ini` file.
+
+
 ## Hardware
 
  * Arduino Leonardo / 'Pro Micro'
