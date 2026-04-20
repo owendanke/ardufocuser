@@ -14,9 +14,6 @@
 // We declare an auto pointer to MyCustomDriver.
 static std::unique_ptr<ArduFocuser> arduFocuser(new ArduFocuser());
 
-/**
- * Constructor for the ArduFocuser class.
- */
 ArduFocuser::ArduFocuser() {
 
     // set driver version
@@ -24,16 +21,19 @@ ArduFocuser::ArduFocuser() {
 
     // the driver will only communicate with serial
     setSupportedConnections(CONNECTION_SERIAL);
+
+    // set focuser capabilities
+    SetCapability(
+        INDI::FocuserInterface::FOCUSER_CAN_REL_MOVE
+        // | INDI::FocuserInterface::FOCUSER_CAN_ABORT  // abort not fast enough yet
+        | INDI::FocuserInterface::FOCUSER_CAN_REVERSE
+    );
+
+
 }
 
-/**
- * Default deconstructor for the ArduFocuser class.
- */
 ArduFocuser::~ArduFocuser() = default;
 
-/**
- * Properties to adjust the behavior and performance of the physical hardware.
- */
 bool ArduFocuser::initProperties() {
 
     LOG_INFO("ArduFocuser initializing properties...");
@@ -61,10 +61,6 @@ bool ArduFocuser::updateProperties() {
     return true;
 }
 
-/**
- * Called when a client requests to connect to the device.
- * Establish a connection with physical hardware.
- */
 bool ArduFocuser::Connect() {
 
     bool connection = INDI::Focuser::Connect();
@@ -79,10 +75,6 @@ bool ArduFocuser::Connect() {
     return connection;
 }
 
-/**
- * Called when a client requests to disconnect from the device.
- * Close the connection with the physical hardware.
- */
 bool ArduFocuser::Disconnect() {
 
     char response[64] = {0};
@@ -110,10 +102,6 @@ bool ArduFocuser::Disconnect() {
     return true;
 }
 
-/**
- * Return the name of the device.
- * In this case getDefaultName() returns "ArduFocuser".
- */
 const char *ArduFocuser::getDefaultName() {
 
     return "ArduFocuser";
@@ -121,10 +109,6 @@ const char *ArduFocuser::getDefaultName() {
 
 /* -- PRIVATE -- */
 
-/**
- * Override INDI::Focuser::Handshake()
- * Send a known command and expect a response
- */
 bool ArduFocuser::Handshake(){
 
     char response[64] = {0};
@@ -146,9 +130,6 @@ bool ArduFocuser::Handshake(){
     return true;
 }
 
-/**
- * Send a command and optionally read a response
- */
 bool ArduFocuser::sendCommand(const char *command, char *response, int responseLength) {
 
     int nbytes_read = 0, nbytes_written = 0, tty_rc = 0;
