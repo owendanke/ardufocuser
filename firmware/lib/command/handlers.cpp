@@ -24,7 +24,16 @@ void handleMachineCmd(stateStruct* data, TMC2209Stepper& driver, AccelStepper& s
     case M6:
       queryDistanceToGo(stepper);
       break;
-    case M99: 
+    case M10:
+      setMicrosteps(data, driver);
+      break;
+    case M11:
+      setSpeed(data, stepper);
+      break;
+    case M12:
+      setAccel(data, stepper);
+      break;
+    case M99:
       stepper.stop();
       Serial.println("ok: stopped");
       break;

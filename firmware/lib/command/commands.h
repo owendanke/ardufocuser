@@ -35,11 +35,14 @@ enum CommandWord {
  */
 enum MachineCommands {
   M_UNKNOWN,
-  M1,   // Connect / handshake
   M0,   // Disconnect
+  M1,   // Connect / handshake
   M4,   // Report driver status
   M5,   // Report current position
   M6,   // Report steps until target position
+  M10,  // Set microsteps, expects integer arguement I<microsteps>
+  M11,  // Set speed, expects integer arguement I<steps/sec>
+  M12,  // Set acceleration, expects integer arguement I<steps/sec/sec>
   M99,  // Unconditional stop
 };
 
@@ -49,11 +52,12 @@ enum MachineCommands {
  */
 enum MotionCommands {
   G_UNKNOWN,
-  G0,   // Relative move
+  G0,   // Relative move, expects position arguement P<steps>
 };
 
 struct MachineCmd {
   MachineCommands code;
+  int I;  // integer parameter
 };
 
 struct MotionCmd {
