@@ -33,12 +33,18 @@ void handleMachineCmd(stateStruct* data, TMC2209Stepper& driver, AccelStepper& s
     case M12:
       setAccel(data, stepper);
       break;
+    case M13:
+      setZeroPosition(data, stepper);
+      break;
+    case M14:
+      setCurrentPosition(data, stepper);
+      break;
     case M99:
       stepper.stop();
-      Serial.println("ok: stopped");
+      Serial.println(F("ok: stopped"));
       break;
     default:
-      Serial.println("err: unknown M code");
+      Serial.println(F("err: unknown M code"));
       break;
   }
 }
@@ -46,12 +52,13 @@ void handleMachineCmd(stateStruct* data, TMC2209Stepper& driver, AccelStepper& s
 void handleMotionCmd(const MotionCmd& cmd, AccelStepper& stepper) {
   switch (cmd.code) {
     case G0:
-      stepper.move(cmd.P);
-      Serial.print("ok: moving ");
-      Serial.println(cmd.P);
+      moveRelative(cmd.P, stepper);
+      break;
+    case G1:
+      moveAbsolute(cmd.P, stepper);
       break;
     default:
-      Serial.println("err: unknown G code");
+      Serial.println(F("err: unknown G code"));
       break;
   }
 }
@@ -60,6 +67,6 @@ void handleCommand(stateStruct* data, TMC2209Stepper& driver, AccelStepper& step
   switch (data->cmd.word) {
     case WORD_M: handleMachineCmd(data, driver, stepper); break;
     case WORD_G: handleMotionCmd(data->cmd.motion, stepper);   break;
-    default:     Serial.println("err: unknown command");  break;
+    default:     Serial.println(F("err: unknown command"));  break;
   }
 }

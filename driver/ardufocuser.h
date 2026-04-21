@@ -63,20 +63,36 @@ class ArduFocuser : public INDI::Focuser
 
     protected:
         /**
+         * Move the focuser to an relative position.
+         * @param dir Direction of focuser, either FOCUS_INWARD or FOCUS_OUTWARD.
+         * @param ticks The relative ticks to move.
+         * @return Return IPS_OK if motion is completed and focuser reached requested position. Return
+         * IPS_BUSY if focuser started motion to requested position and is in progress.
+         * Return IPS_ALERT if there is an error.
+         */
+        IPState MoveRelFocuser(FocusDirection, uint32_t) override;
+
+        /**
+         * Move the focuser to an absolute position.
+         * @param ticks The new position of the focuser.
+         * @return Return IPS_OK if motion is completed and focuser reached requested position. Return
+         * IPS_BUSY if focuser started motion to requested position and is in progress.
+         * Return IPS_ALERT if there is an error.
+         */
+        IPState MoveAbsFocuser(uint32_t targetTicks) override;
+
+        /**
          * Cancel all focuser motion
          * @return True if abort is successful, false otherwise.
          */
         bool AbortFocuser() override;
 
         /**
-         * MoveFocuser the focuser to an relative position.
-         * \param dir Direction of focuser, either FOCUS_INWARD or FOCUS_OUTWARD.
-         * \param ticks The relative ticks to move.
-         * @return Return IPS_OK if motion is completed and focuser reached requested position. Return
-         * IPS_BUSY if focuser started motion to requested position and is in progress.
-         * Return IPS_ALERT if there is an error.
+         * Set current position to ticks without moving the focuser.
+         * @param ticks Desired new sync position.
+         * @return True if successful, false otherwise.
          */
-        IPState MoveRelFocuser(FocusDirection dir, uint32_t ticks) override;
+        bool SyncFocuser(uint32_t) override;
 
 
     private:

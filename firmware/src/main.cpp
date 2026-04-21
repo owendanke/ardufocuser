@@ -6,6 +6,7 @@
 #include <Arduino.h>
 #include <TMCStepper.h>
 #include <AccelStepper.h>
+#include <MemoryFree.h>
 
 #include "commands.h"
 #include "handlers.h"
@@ -13,6 +14,7 @@
 #include "stateStruct.h"
 
 #include "pinDefinitions.h"
+
 
 #define DRIVER_ADDRESS 0b00 // TMC2209 Driver address according to MS1 and MS2
 #define SERIAL_PORT Serial1 // UART serial for TMC2209
@@ -31,7 +33,8 @@ AccelStepper stepper(AccelStepper::DRIVER, STEP_PIN, DIR_PIN);
  */
 uint32_t STEPS_PER_REV = 200;
 
-String inputBuffer = "";
+char inputBuffer[64];
+uint8_t bufferIndex = 0;
 
 bool dir = false;
 uint32_t stepsToMove;
@@ -54,8 +57,8 @@ void setup() {
   Serial.begin(9600);             // usb serial
   SERIAL_PORT.begin(115200);      // HW UART drivers  
 
-  // // Flush any garbage in the buffer before handshake
-  // delay(100);  // give USB stack time to settle
+  // Flush any garbage in the buffer before handshake
+  delay(100);  // give USB stack time to settle
   // while (Serial.available()) Serial.read();
 
   /* -- handshake loop -- */
@@ -64,12 +67,11 @@ void setup() {
     if (Serial.available()) {
       char c = Serial.read();
       if (c == '\n' || c == '\r') {
-        // if there is 
-        if (inputBuffer.length() > 0) {
-          inputBuffer.trim();
+        if (bufferIndex > 0) {
+          inputBuffer[bufferIndex] = '\0';
 
           focuserData->cmd = parseCommand(inputBuffer);
-          inputBuffer = "";
+          bufferIndex = 0;
 
           // check if command is handshake
           if (focuserData->cmd.machine.code == M1) {
@@ -77,17 +79,14 @@ void setup() {
             break;
           }
           else {
-            Serial.println("err: invalid handshake, send M1");  
+            Serial.println(F("err: invalid handshake, send M1"));  
           }
         }
-      } else {
-        inputBuffer += c;
+      } else if (bufferIndex < 31) {
+        inputBuffer[bufferIndex++] = c;
       }
     }
   }
-  
-
-
 }
 
 void loop() {
@@ -95,15 +94,17 @@ void loop() {
   while (Serial.available()) {
     char c = Serial.read();
     if (c == '\n' || c == '\r') {
-      if (inputBuffer.length() > 0) {
-        inputBuffer.trim();
+      if (bufferIndex > 0) {
+        inputBuffer[bufferIndex] = '\0';
 
         focuserData->cmd = parseCommand(inputBuffer);
-        inputBuffer = "";
+        bufferIndex = 0;
 
         // always accept machine commands
         if (focuserData->cmd.word == WORD_M) {
           handleCommand(focuserData, driver, stepper);
+          Serial.print(F("Free RAM: "));
+          Serial.println(freeMemory());
         }
 
         // only accept motion if focuser is connected
@@ -111,16 +112,14 @@ void loop() {
           handleCommand(focuserData, driver, stepper);
         }
         else {
-          Serial.println("err: focuser not connected, send M1");  
+          Serial.println(F("err: focuser not connected, send M1"));  
         }
       }
-    } else {
-      inputBuffer += c;
+    } else if (bufferIndex < 31) {
+      inputBuffer[bufferIndex++] = c;
     }
   }
 
-  // Must be called every loop — non-blocking
-  if (stepper.distanceToGo() != 0) {
+  // Must be called every loop - non-blocking
     stepper.run();
-  }
 }

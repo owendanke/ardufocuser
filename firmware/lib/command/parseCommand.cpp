@@ -22,29 +22,30 @@
 /** 
  * Recursive descent parser
 */
-Command parseCommand(const String& raw) {
+Command parseCommand(const char* raw) {
   Command cmd;
   cmd.word          = WORD_UNKNOWN;
   cmd.machine.code  = M_UNKNOWN;
   cmd.motion.code   = G_UNKNOWN;
   cmd.motion.P      = 0;
 
-  if (raw.length() == 0) return cmd;
+  if (strlen(raw) == 0) return cmd;
 
   // position (cursor/pointer) of symbol to read
   unsigned int pos = 0;
 
   // consume word letter (M or G) and increment the position counter
-  char letter = toupper(raw.charAt(pos++));
+  char letter = toupper(raw[pos++]);
 
   // set starting position of code digits
   int codeStart = pos;
 
   // consume code digits
-  while (pos < raw.length() && isDigit(raw.charAt(pos))) pos++;
+  while (pos < strlen(raw) && isDigit(raw[pos])) pos++;
 
   // save the code that was read
-  int code = raw.substring(codeStart, pos).toInt();
+  int code = atoi(raw + codeStart);
+  // int code = raw.substring(codeStart, pos).toInt();
 
   // Parse the word letter
   if (letter == 'M') {
@@ -64,18 +65,18 @@ Command parseCommand(const String& raw) {
   }
 
   // consume optional parameters
-  while (pos < raw.length()) {
+  while (pos < strlen(raw)) {
     // skip whitespace
-    while (pos < raw.length() && raw.charAt(pos) == ' ') pos++;
+    while (pos < strlen(raw) && raw[pos] == ' ') pos++;
     // reached 'eof'
-    if (pos >= raw.length()) break;
+    if (pos >= strlen(raw)) break;
 
     // consume parameter letter
-    char paramLetter = toupper(raw.charAt(pos++));
+    char paramLetter = toupper(raw[pos++]);
 
     // consume signed number
     bool negative = false;
-    if (pos < raw.length() && raw.charAt(pos) == '-') {
+    if (pos < strlen(raw) && raw[pos] == '-') {
       negative = true;
       pos++;
     }
@@ -84,11 +85,12 @@ Command parseCommand(const String& raw) {
     int numStart = pos;
 
     // consume value digits
-    while (pos < raw.length() && isDigit(raw.charAt(pos))) pos++;
+    while (pos < strlen(raw) && isDigit(raw[pos])) pos++;
 
     // save the value that was read
-    long value = raw.substring(numStart, pos).toInt();
-
+    long value = atol(raw + numStart);
+    // long value = raw.substring(numStart, pos).toInt();
+    
     // if negative then negate value
     if (negative) value = -value;
 
@@ -114,6 +116,8 @@ MachineCommands parseMachineCode(int code) {
     case 10: return M10;
     case 11: return M11;
     case 12: return M12;
+    case 13: return M13;
+    case 14: return M14;
     case 99: return M99;
     default: return M_UNKNOWN;
   }
@@ -122,28 +126,7 @@ MachineCommands parseMachineCode(int code) {
 MotionCommands parseMotionCode(int code) {
   switch (code) {
     case 0: return G0;
+    case 1: return G1;
     default: return G_UNKNOWN;
   }
-}
-
-int hasIntParam(const String& raw) {
-  int iIdx = raw.indexOf('I');
-
-  if (iIdx == -1) {
-    // double check if accidently sent lowercase
-    iIdx = raw.indexOf('i');
-  }
-
-  return iIdx;
-}
-
-int hasPosParam(const String& raw) {
-  int pIdx = raw.indexOf('P');
-
-  if (pIdx == -1) {
-    // double check if accidently sent lowercase
-    pIdx = raw.indexOf('p');
-  }
-
-  return pIdx;
 }

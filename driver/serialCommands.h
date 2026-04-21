@@ -29,6 +29,9 @@ typedef struct SerialCodes {
     // query if the focuser is done
     static constexpr const char* distanceToGo = "M6\n";
 
+    // sync the focuser to the current position (in steps)
+    static constexpr const char* setCurrentPosition = "M14";
+
     // immedietly stop any focuser movement
     static constexpr const char* unconditionalStop = "M99\n";
 
@@ -36,4 +39,7 @@ typedef struct SerialCodes {
 
     // move a relative number of steps. args: P<steps>. example to move 100 steps: G0 P100
     static constexpr const char* relativeMove = "G0";
+
+    // move to a specific location, in steps. args: P<steps>. example to move to 0 steps: G0 P0
+    static constexpr const char* absoluteMove = "G1";
 } SerialCodes;

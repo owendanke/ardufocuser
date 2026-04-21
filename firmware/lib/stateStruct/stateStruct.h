@@ -13,6 +13,8 @@
 typedef struct {
     bool isConnected = false;
     Command cmd;
+    uint32_t maxSpeed = 3200;
+    uint32_t accel = 1600;
 } stateStruct;
 
 #endif // STATESTRUCT_H

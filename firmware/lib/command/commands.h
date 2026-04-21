@@ -43,6 +43,8 @@ enum MachineCommands {
   M10,  // Set microsteps, expects integer arguement I<microsteps>
   M11,  // Set speed, expects integer arguement I<steps/sec>
   M12,  // Set acceleration, expects integer arguement I<steps/sec/sec>
+  M13,  // Set zero position
+  M14,  // Set current position, expects integer arguement I<steps>
   M99,  // Unconditional stop
 };
 
@@ -53,6 +55,7 @@ enum MachineCommands {
 enum MotionCommands {
   G_UNKNOWN,
   G0,   // Relative move, expects position arguement P<steps>
+  G1,   // Absolute move, expects position arguement P<steps>
 };
 
 struct MachineCmd {

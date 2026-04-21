@@ -5,12 +5,6 @@
 
 #include <Arduino.h>
 
-Command parseCommand(const String&);
+Command parseCommand(const char*);
 MachineCommands parseMachineCode(int);
 MotionCommands parseMotionCode(int);
-
-int hasIntParam(const String&);
-int hasPosParam(const String&);
-
-void setIntParam(const String&, int);
-void setPosParam(const String&, int);

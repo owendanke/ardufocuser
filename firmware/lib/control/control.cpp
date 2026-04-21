@@ -27,7 +27,7 @@ void handshake(stateStruct* data, TMC2209Stepper& driver, AccelStepper& stepper)
     // let host know
     // 0 = OK, 1/2 = fault
     if (result != 0) {
-        Serial.println("err: TMC2209 driver failed to connect");
+        Serial.println(F("err: TMC2209 driver failed to connect"));
     }
 
     driver.begin();                 // SPI: Init CS pins and possible SW SPI pins
@@ -38,6 +38,7 @@ void handshake(stateStruct* data, TMC2209Stepper& driver, AccelStepper& stepper)
 
     driver.en_spreadCycle(false);   // Toggle spreadCycle on TMC2208/2209/2224
     driver.pwm_autoscale(true);     // Needed for stealthChop
+    //driver.SGTHRS(0);               // set stall threshold to 0 — disables stall protection
 
     // adjust how many steps needed for a single revolution based on configured microsteps
     uint16_t ms = driver.microsteps();
@@ -45,13 +46,13 @@ void handshake(stateStruct* data, TMC2209Stepper& driver, AccelStepper& stepper)
     STEPS_PER_REV = 200 * ms;
 
     // configure speed and acceleration
-    stepper.setMaxSpeed(STEPS_PER_REV * 5);           // 5 rev/sec
-    stepper.setAcceleration(STEPS_PER_REV * 5);       // 5 rev/sec/sec
+    stepper.setMaxSpeed(data->maxSpeed);    // 1000
+    stepper.setAcceleration(data->accel);   // 15000
 
     // update connected status
     data->isConnected = true;
 
-    Serial.println("ok: ArduFocuser_1.0");
+    Serial.println(F("ok: ArduFocuser_1.0"));
 }
 
 void disconnect(stateStruct* data, TMC2209Stepper& driver, AccelStepper& stepper) {
@@ -63,42 +64,45 @@ void disconnect(stateStruct* data, TMC2209Stepper& driver, AccelStepper& stepper
 
     data->isConnected = false;
 
-    Serial.println("ok: disconnected");
+    Serial.println(F("ok: disconnected"));
 }
 
 void reportDriverStatus(TMC2209Stepper& driver) {
-    Serial.println("ok: TMC2209 info - ");
+    Serial.println(F("ok: TMC2209 info - "));
     // Try reading version — should return 0x21 for TMC2209
-    Serial.print("Driver version: 0x");
+    Serial.print(F("Driver version: 0x"));
     Serial.println((driver.IOIN() >> 24) & 0xFF, HEX);  // expect 0x21
 
     // print microsteps
-    Serial.print("Microsteps: ");
+    Serial.print(F("Microsteps: "));
     Serial.println(driver.microsteps());
 
     // print current value
-    Serial.print("RMS current (mA): ");
+    Serial.print(F("RMS current (mA): "));
     Serial.println(driver.rms_current());  // Read back actual value
 
     // print current setting
-    Serial.print("CS actual (current scale): ");
+    Serial.print(F("CS actual (current scale): "));
     Serial.println(driver.cs_actual());    // 0-31, higher = more current
+
+    Serial.print(F("Stall Guard: "));
+    Serial.println(driver.SGTHRS());
 }
 
 void queryPosition(AccelStepper& stepper) {
-    Serial.print("ok: position = ");
+    Serial.print(F("ok: position = "));
     Serial.println(stepper.currentPosition());
 }
 
 void queryDistanceToGo(AccelStepper& stepper) {
     long distanceToGo = stepper.distanceToGo();
 
-    if (distanceToGo > 0) {
-        Serial.print("ok: moving = ");
+    if (stepper.isRunning()) {
+        Serial.print(F("ok: moving = "));
         Serial.println(distanceToGo);
     }
     else {
-        Serial.print("ok: done. position = ");
+        Serial.print(F("ok: done. position = "));
         Serial.println(stepper.currentPosition());
     }
 }
@@ -116,7 +120,7 @@ void setMicrosteps(stateStruct* data, TMC2209Stepper& driver) {
 
         if (data->cmd.machine.I == current) {
             driver.microsteps(data->cmd.machine.I);
-            Serial.print("ok: microsteps = ");
+            Serial.print(F("ok: microsteps = "));
             Serial.println(data->cmd.machine.I);
             valid = true;
             break;
@@ -125,31 +129,68 @@ void setMicrosteps(stateStruct* data, TMC2209Stepper& driver) {
 
     if (!valid) {
         // If no valid match was found, print an error message
-        Serial.print("err: Invalid microsteps value ");
+        Serial.print(F("err: Invalid microsteps value "));
         Serial.println(data->cmd.machine.I);
     }
 }
 
 void setSpeed(stateStruct* data, AccelStepper& stepper) {
     if (data->cmd.machine.I < 1) {
-        Serial.print("err: Invalid speed value ");
+        Serial.print(F("err: Invalid speed value "));
         Serial.println(data->cmd.machine.I);
     }
     else {
         stepper.setMaxSpeed(data->cmd.machine.I);
-        Serial.print("ok: max speed = ");
+        data->maxSpeed = data->cmd.machine.I;
+        Serial.print(F("ok: max speed = "));
         Serial.println(data->cmd.machine.I);
     }
 }
 
 void setAccel(stateStruct* data, AccelStepper& stepper) {
     if (data->cmd.machine.I < 1) {
-        Serial.print("err: Invalid accel value ");
+        Serial.print(F("err: Invalid accel value "));
         Serial.println(data->cmd.machine.I);
     }
     else {
         stepper.setAcceleration(data->cmd.machine.I);
-        Serial.print("ok: accel = ");
+        data->accel = data->cmd.machine.I;
+        Serial.print(F("ok: accel = "));
         Serial.println(data->cmd.machine.I);
     }
+}
+
+void setZeroPosition(stateStruct* data, AccelStepper& stepper) {
+    if (stepper.distanceToGo() != 0) {
+        Serial.println(F("err: cannot reset position while moving"));
+        return;
+    }
+    stepper.setCurrentPosition(0);
+    stepper.setMaxSpeed(data->maxSpeed);
+    stepper.setAcceleration(data->accel);
+    Serial.println(F("ok: reset zero position"));
+}
+
+void setCurrentPosition(stateStruct* data, AccelStepper& stepper) {
+    if (stepper.distanceToGo() != 0) {
+        Serial.println(F("err: cannot set position while moving"));
+        return;
+    }
+    stepper.setCurrentPosition(data->cmd.machine.I);
+    stepper.setMaxSpeed(data->maxSpeed);
+    stepper.setAcceleration(data->accel);
+    Serial.print(F("ok: set position "));
+    Serial.println(data->cmd.machine.I);
+}
+
+void moveRelative(long relative, AccelStepper& stepper) {
+    stepper.move(relative);
+    Serial.print(F("ok: moving "));
+    Serial.println(relative);
+}
+
+void moveAbsolute(long targetPosition, AccelStepper& stepper) {
+    stepper.moveTo(targetPosition);
+    Serial.print(F("ok: moving to "));
+    Serial.println(targetPosition);
 }
