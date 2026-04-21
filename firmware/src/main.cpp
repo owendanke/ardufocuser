@@ -10,6 +10,7 @@
 #include "commands.h"
 #include "handlers.h"
 #include "parseCommand.h"
+#include "stateStruct.h"
 
 #include "pinDefinitions.h"
 
@@ -36,7 +37,12 @@ bool dir = false;
 uint32_t stepsToMove;
 uint32_t currentStep = 0;
 
+//singleton& focuserData = singleton::getInstance();
+stateStruct* focuserData = NULL;
+
 void setup() {
+  focuserData = (stateStruct*) malloc(sizeof(stateStruct));
+
   pinMode(EN_PIN, OUTPUT);
   pinMode(STEP_PIN, OUTPUT);
   pinMode(DIR_PIN, OUTPUT);
@@ -48,42 +54,40 @@ void setup() {
   Serial.begin(9600);             // usb serial
   SERIAL_PORT.begin(115200);      // HW UART drivers  
 
-  // handshake loop
-  while (Serial.available()) {
-    char c = Serial.read();
-    if (c == '\n' || c == '\r') {
-      if (inputBuffer.length() > 0) {
-        inputBuffer.trim();
+  // // Flush any garbage in the buffer before handshake
+  // delay(100);  // give USB stack time to settle
+  // while (Serial.available()) Serial.read();
 
-        Command cmd = parseCommand(inputBuffer);
-        handleCommand(cmd, driver, stepper);
+  /* -- handshake loop -- */
+  // blocking loop
+  while (true) {
+    if (Serial.available()) {
+      char c = Serial.read();
+      if (c == '\n' || c == '\r') {
+        // if there is 
+        if (inputBuffer.length() > 0) {
+          inputBuffer.trim();
 
-        inputBuffer = "";
+          focuserData->cmd = parseCommand(inputBuffer);
+          inputBuffer = "";
+
+          // check if command is handshake
+          if (focuserData->cmd.machine.code == M1) {
+            handleCommand(focuserData, driver, stepper);
+            break;
+          }
+          else {
+            Serial.println("err: invalid handshake, send M1");  
+          }
+        }
+      } else {
+        inputBuffer += c;
       }
-    } else {
-      inputBuffer += c;
     }
   }
+  
 
-  // Check UART comms are working
-  uint8_t result = driver.test_connection();
-  if (result != 0) {
-    Serial.print("UART connection failed, error: ");
-    Serial.println(result);  // 0 = OK, 1/2 = fault
-  } else {
-    Serial.println("Driver connected OK");
 
-    // adjust how many steps needed for a single revolution based on configured microsteps
-    uint16_t ms = driver.microsteps();
-    if (ms == 0) ms = 256;  // 0 means 256-step interpolation
-    STEPS_PER_REV = 200 * ms;
-
-    // configure speed and acceleration
-    stepper.setMaxSpeed(STEPS_PER_REV * 5);           // 5 rev/sec
-    stepper.setAcceleration(STEPS_PER_REV * 5);       // 2 rev/sec/sec
-
-    Serial.println("Ready. Commands: M<steps> P<pos> S<speed> A<accel> H ?");
-  }
 }
 
 void loop() {
@@ -93,9 +97,22 @@ void loop() {
     if (c == '\n' || c == '\r') {
       if (inputBuffer.length() > 0) {
         inputBuffer.trim();
-        Command cmd = parseCommand(inputBuffer);
-        handleCommand(cmd, driver, stepper);
+
+        focuserData->cmd = parseCommand(inputBuffer);
         inputBuffer = "";
+
+        // always accept machine commands
+        if (focuserData->cmd.word == WORD_M) {
+          handleCommand(focuserData, driver, stepper);
+        }
+
+        // only accept motion if focuser is connected
+        else if (focuserData->isConnected && focuserData->cmd.word == WORD_G) {
+          handleCommand(focuserData, driver, stepper);
+        }
+        else {
+          Serial.println("err: focuser not connected, send M1");  
+        }
       }
     } else {
       inputBuffer += c;
@@ -107,15 +124,3 @@ void loop() {
     stepper.run();
   }
 }
-
-/*
-void loop() {
-  stepper.moveTo(STEPS_PER_REV);       // 1 revolution forward
-  while (stepper.distanceToGo() != 0) stepper.run();
-  delay(500);
-
-  stepper.moveTo(0);                   // back to start
-  while (stepper.distanceToGo() != 0) stepper.run();
-  delay(500);
-}
-*/

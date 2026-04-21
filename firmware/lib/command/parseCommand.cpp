@@ -32,6 +32,7 @@ Command parseCommand(const String& raw) {
     else if (code == 0)  cmd.machine.code = M0;
     else if (code == 4)  cmd.machine.code = M4;
     else if (code == 5)  cmd.machine.code = M5;
+    else if (code == 6)  cmd.machine.code = M6;
     else if (code == 99) cmd.machine.code = M99;
     else                 cmd.machine.code = M_UNKNOWN;
 

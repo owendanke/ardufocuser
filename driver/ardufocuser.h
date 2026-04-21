@@ -56,6 +56,29 @@ class ArduFocuser : public INDI::Focuser
          */
         const char *getDefaultName();
 
+        /**
+         * Callback function to be called once SetTimer duration elapses.
+         */
+        void TimerHit() override;
+
+    protected:
+        /**
+         * Cancel all focuser motion
+         * @return True if abort is successful, false otherwise.
+         */
+        bool AbortFocuser() override;
+
+        /**
+         * MoveFocuser the focuser to an relative position.
+         * \param dir Direction of focuser, either FOCUS_INWARD or FOCUS_OUTWARD.
+         * \param ticks The relative ticks to move.
+         * @return Return IPS_OK if motion is completed and focuser reached requested position. Return
+         * IPS_BUSY if focuser started motion to requested position and is in progress.
+         * Return IPS_ALERT if there is an error.
+         */
+        IPState MoveRelFocuser(FocusDirection dir, uint32_t ticks) override;
+
+
     private:
         /**
          * Override INDI::Focuser::Handshake()

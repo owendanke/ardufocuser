@@ -31,7 +31,7 @@ enum CommandWord {
 
 /**
  * Machine command identifiers
- * Specifies which command is being asked (i.e. CMD_M1)
+ * Specifies which command is being asked (i.e. M1)
  */
 enum MachineCommands {
   M_UNKNOWN,
@@ -39,12 +39,13 @@ enum MachineCommands {
   M0,   // Disconnect
   M4,   // Report driver status
   M5,   // Report current position
+  M6,   // Report steps until target position
   M99,  // Unconditional stop
 };
 
 /**
  * Motion command identifiers
- * Specifies which command is being asked (i.e. CMD_G0)
+ * Specifies which command is being asked (i.e. G0)
  */
 enum MotionCommands {
   G_UNKNOWN,
@@ -52,18 +53,18 @@ enum MotionCommands {
 };
 
 struct MachineCmd {
-    MachineCommands code;
+  MachineCommands code;
 };
 
 struct MotionCmd {
-    MotionCommands code;
-    long P; // position parameter
+  MotionCommands code;
+  long P; // position parameter
 };
 
 struct Command {
-    CommandWord word;
-    MachineCmd machine;
-    MotionCmd motion;
+  CommandWord word;
+  MachineCmd machine;
+  MotionCmd motion;
 };
 
 #endif // COMMANDS_H

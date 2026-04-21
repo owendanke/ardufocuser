@@ -25,8 +25,7 @@ ArduFocuser::ArduFocuser() {
     // set focuser capabilities
     SetCapability(
         INDI::FocuserInterface::FOCUSER_CAN_REL_MOVE
-        // | INDI::FocuserInterface::FOCUSER_CAN_ABORT  // abort not fast enough yet
-        | INDI::FocuserInterface::FOCUSER_CAN_REVERSE
+        | INDI::FocuserInterface::FOCUSER_CAN_ABORT
     );
 
 
@@ -105,6 +104,105 @@ bool ArduFocuser::Disconnect() {
 const char *ArduFocuser::getDefaultName() {
 
     return "ArduFocuser";
+}
+
+void ArduFocuser::TimerHit()
+{
+    if (!isConnected())
+        return;
+
+    // Only poll the focuser if currently moving
+    if (FocusRelPosNP.getState() == IPS_BUSY) {
+        char response[64] = {0};
+
+        // Ask focuser if move has finished
+        if (!sendCommand(SerialCodes::distanceToGo, response, sizeof(response))) {
+            LOG_ERROR("TimerHit: failed to get status");
+
+            FocusRelPosNP.setState(IPS_ALERT);
+            FocusRelPosNP.apply();
+        }
+        else if (strncmp("ok: done", response, 8) == 0) {
+            LOG_INFO("Focuser move complete");
+
+            FocusRelPosNP.setState(IPS_OK);
+            FocusRelPosNP.apply();
+        }
+        else if (strncmp("err", response, 3) == 0) {
+            LOGF_ERROR("Focuser error: %s", response);
+            FocusRelPosNP.setState(IPS_ALERT);
+            FocusRelPosNP.apply();
+        }
+        // if still moving then check again next tick
+    }
+
+    // Must call this at the end to reschedule the timer
+    SetTimer(getCurrentPollingPeriod());
+}
+
+/* -- PROTECTED -- */
+
+bool ArduFocuser::AbortFocuser() {
+    char response[64] = {0};
+
+    LOGF_INFO("Sending command: %s", SerialCodes::unconditionalStop);
+
+    // send move message to focuser
+    if (!sendCommand(SerialCodes::unconditionalStop, response, sizeof(response)))
+    {
+        LOG_ERROR("abort failed: could not send command");
+        return false;
+    }
+
+    // if focuser acknowledges abort command, set true
+    if (strncmp("ok: stop", response, 8) == 0)
+    {
+        LOG_INFO("focuser movement stopped.");
+        //FocusRelPosNP.setState(IPS_OK);
+        //FocusRelPosNP.apply();
+        return true;
+    }
+
+    LOGF_ERROR("Unexpected response: %s", response);
+    return false;
+}
+
+IPState ArduFocuser::MoveRelFocuser(FocusDirection dir, uint32_t ticks) {
+    char cmdToSend[32] = {0};
+    char response[64] = {0};
+
+    // build the relative movement command
+    strcpy(cmdToSend, SerialCodes::relativeMove);
+
+    if (dir == FOCUS_INWARD) {
+        strcat(cmdToSend, " P-");
+    }
+    else {
+        strcat(cmdToSend, " P");
+    }
+    strcat(cmdToSend, std::to_string(ticks).c_str());
+    strcat(cmdToSend, "\n");
+
+    LOGF_INFO("Sending command: %s", cmdToSend);
+
+
+    // send move message to focuser
+    if (!sendCommand(cmdToSend, response, sizeof(response)))
+    {
+        LOG_ERROR("Relative move failed: could not send command");
+        return IPS_ALERT;
+    }
+
+    // if focuser acknowledges move command, set IPS_BUSY
+    if (strncmp("ok: moving", response, 10) == 0)
+    {
+        FocusRelPosNP.setState(IPS_BUSY);
+        FocusRelPosNP.apply();
+        return IPS_BUSY;
+    }
+
+    LOGF_ERROR("Unexpected response: %s", response);
+    return IPS_ALERT;
 }
 
 /* -- PRIVATE -- */

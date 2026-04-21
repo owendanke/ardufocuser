@@ -26,6 +26,9 @@ typedef struct SerialCodes {
     // query the focuser's current position (in steps)
     static constexpr const char* currentPosition = "M5\n";
 
+    // query if the focuser is done
+    static constexpr const char* distanceToGo = "M6\n";
+
     // immedietly stop any focuser movement
     static constexpr const char* unconditionalStop = "M99\n";
 

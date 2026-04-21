@@ -9,14 +9,15 @@
 #include <TMCStepper.h>
 #include <AccelStepper.h>
 #include "commands.h"
+#include "stateStruct.h"
 
 /**
  * Handlers take a reference to the stepper so they can control it
  * without it being a global. Declare your stepper in main and pass it in.
  */
 
-void handleMachineCmd(const MachineCmd&, TMC2209Stepper&, AccelStepper&);
+void handleMachineCmd(stateStruct*, TMC2209Stepper&, AccelStepper&);
 void handleMotionCmd(const MotionCmd&, TMC2209Stepper&, AccelStepper&);
-void handleCommand(const Command&, TMC2209Stepper&, AccelStepper&);
+void handleCommand(stateStruct*, TMC2209Stepper&, AccelStepper&);
 
 #endif // HANDLERS_H
