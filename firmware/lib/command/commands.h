@@ -61,11 +61,13 @@ enum MotionCommands {
 struct MachineCmd {
   MachineCommands code;
   int I;  // integer parameter
+  bool hasI;
 };
 
 struct MotionCmd {
   MotionCommands code;
   long P; // position parameter
+  bool hasP;
 };
 
 struct Command {

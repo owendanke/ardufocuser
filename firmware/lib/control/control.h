@@ -29,9 +29,3 @@ void setAccel(stateStruct*, AccelStepper&);
 void setZeroPosition(stateStruct*, AccelStepper&);
 
 void setCurrentPosition(stateStruct*, AccelStepper&);
-
-/* -- Motion Commands -- */
-
-void moveRelative(long, AccelStepper&);
-
-void moveAbsolute(long, AccelStepper&);

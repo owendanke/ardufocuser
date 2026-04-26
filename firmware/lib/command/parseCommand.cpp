@@ -19,6 +19,25 @@
 #include "commands.h"
 #include "parseCommand.h"
 
+static const MotionCommandDef motionDefs[] = {
+  { G0, PARAM_P },
+  { G1, PARAM_P },
+};
+
+static const MachineCommandDef machineDefs[] = {
+  { M1,  PARAM_NONE },
+  { M0,  PARAM_NONE },
+  { M4,  PARAM_NONE },
+  { M5,  PARAM_NONE },
+  { M6,  PARAM_NONE },
+  { M10, PARAM_I },
+  { M11, PARAM_I },
+  { M12, PARAM_I },
+  { M13, PARAM_NONE },
+  { M14, PARAM_I },
+  { M99, PARAM_NONE },
+};
+
 /** 
  * Recursive descent parser
 */
@@ -29,10 +48,12 @@ Command parseCommand(const char* raw) {
   cmd.motion.code   = G_UNKNOWN;
   cmd.motion.P      = 0;
 
-  if (strlen(raw) == 0) return cmd;
+  uint8_t len = strlen(raw);  // calculate once
+
+  if (len == 0) return cmd;
 
   // position (cursor/pointer) of symbol to read
-  unsigned int pos = 0;
+  uint8_t pos = 0;
 
   // consume word letter (M or G) and increment the position counter
   char letter = toupper(raw[pos++]);
@@ -41,11 +62,10 @@ Command parseCommand(const char* raw) {
   int codeStart = pos;
 
   // consume code digits
-  while (pos < strlen(raw) && isDigit(raw[pos])) pos++;
+  while (pos < len && isDigit(raw[pos])) pos++;
 
   // save the code that was read
-  int code = atoi(raw + codeStart);
-  // int code = raw.substring(codeStart, pos).toInt();
+  int code = (codeStart == pos) ? -1 : atoi(raw + codeStart);
 
   // Parse the word letter
   if (letter == 'M') {
@@ -65,18 +85,18 @@ Command parseCommand(const char* raw) {
   }
 
   // consume optional parameters
-  while (pos < strlen(raw)) {
+  while (pos < len) {
     // skip whitespace
-    while (pos < strlen(raw) && raw[pos] == ' ') pos++;
+    while (pos < len && raw[pos] == ' ') pos++;
     // reached 'eof'
-    if (pos >= strlen(raw)) break;
+    if (pos >= len) break;
 
     // consume parameter letter
     char paramLetter = toupper(raw[pos++]);
 
     // consume signed number
     bool negative = false;
-    if (pos < strlen(raw) && raw[pos] == '-') {
+    if (pos < len && raw[pos] == '-') {
       negative = true;
       pos++;
     }
@@ -85,20 +105,25 @@ Command parseCommand(const char* raw) {
     int numStart = pos;
 
     // consume value digits
-    while (pos < strlen(raw) && isDigit(raw[pos])) pos++;
+    while (pos < len && isDigit(raw[pos])) pos++;
 
     // save the value that was read
     long value = atol(raw + numStart);
-    // long value = raw.substring(numStart, pos).toInt();
     
     // if negative then negate value
     if (negative) value = -value;
 
     // assign value to the parameter
     switch (paramLetter) {
-      case 'I': cmd.machine.I = value; break;
-      case 'P': cmd.motion.P = value; break;
-      default: break;  // unknown param — ignore
+      case 'I':
+        cmd.machine.I = value;
+        cmd.machine.hasI = true;
+        break;
+      case 'P':
+        cmd.motion.P = value;
+        cmd.motion.hasP = true;
+        break;
+      default: break;  // unknown param
     }
 
   }
@@ -129,4 +154,31 @@ MotionCommands parseMotionCode(int code) {
     case 1: return G1;
     default: return G_UNKNOWN;
   }
+}
+
+bool validateCommand(Command& cmd) {
+  if (cmd.word == WORD_G) {
+    for (uint8_t i = 0; i < sizeof(motionDefs)/sizeof(motionDefs[0]); i++) {
+      if (motionDefs[i].code == cmd.motion.code) {
+        uint8_t req = motionDefs[i].required;
+        if ((req & PARAM_P) && cmd.motion.P == 0 && !cmd.motion.hasP) {
+          Serial.println(F("err: missing P parameter"));
+          return false;
+        }
+        return true;
+      }
+    }
+  } else if (cmd.word == WORD_M) {
+    for (uint8_t i = 0; i < sizeof(machineDefs)/sizeof(machineDefs[0]); i++) {
+      if (machineDefs[i].code == cmd.machine.code) {
+        uint8_t req = machineDefs[i].required;
+        if ((req & PARAM_I) && !cmd.machine.hasI) {
+          Serial.println(F("err: missing I parameter"));
+          return false;
+        }
+        return true;
+      }
+    }
+  }
+  return true;
 }

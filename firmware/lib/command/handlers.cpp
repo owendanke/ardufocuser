@@ -43,6 +43,9 @@ void handleMachineCmd(stateStruct* data, TMC2209Stepper& driver, AccelStepper& s
       stepper.stop();
       Serial.println(F("ok: stopped"));
       break;
+    case M_UNKNOWN:
+      Serial.println(F("err: unknown M code"));
+      break;
     default:
       Serial.println(F("err: unknown M code"));
       break;
@@ -52,10 +55,17 @@ void handleMachineCmd(stateStruct* data, TMC2209Stepper& driver, AccelStepper& s
 void handleMotionCmd(const MotionCmd& cmd, AccelStepper& stepper) {
   switch (cmd.code) {
     case G0:
-      moveRelative(cmd.P, stepper);
+      stepper.move(cmd.P);
+      Serial.print(F("ok: moving "));
+      Serial.println(cmd.P);
       break;
     case G1:
-      moveAbsolute(cmd.P, stepper);
+      stepper.moveTo(cmd.P);
+      Serial.print(F("ok: moving to "));
+      Serial.println(cmd.P);
+      break;
+    case G_UNKNOWN:
+      Serial.println(F("err: unknown G code"));
       break;
     default:
       Serial.println(F("err: unknown G code"));
@@ -65,8 +75,17 @@ void handleMotionCmd(const MotionCmd& cmd, AccelStepper& stepper) {
 
 void handleCommand(stateStruct* data, TMC2209Stepper& driver, AccelStepper& stepper) {
   switch (data->cmd.word) {
-    case WORD_M: handleMachineCmd(data, driver, stepper); break;
-    case WORD_G: handleMotionCmd(data->cmd.motion, stepper);   break;
-    default:     Serial.println(F("err: unknown command"));  break;
+    case WORD_M: 
+      handleMachineCmd(data, driver, stepper);
+      break;
+    case WORD_G: 
+      handleMotionCmd(data->cmd.motion, stepper);
+      break;
+    case WORD_UNKNOWN:
+      Serial.println(F("err: unknown command"));
+      break;
+    default:
+      Serial.println(F("err: unknown command"));
+      break;
   }
 }

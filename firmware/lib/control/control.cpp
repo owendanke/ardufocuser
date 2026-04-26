@@ -12,33 +12,40 @@ void handshake(stateStruct* data, TMC2209Stepper& driver, AccelStepper& stepper)
     const uint8_t MAX_RETRIES = 5;
     uint8_t attempt = 0;
     uint8_t result  = 0;
+
+    /**
+     * How many steps needed to make one revolution
+     * 1.8 degrees/step * 1 revlotion/360 degrees = 200 steps/revolution
+     * This must be multiplied by microsteps before being used
+     */
     uint32_t STEPS_PER_REV = 200;
 
     // enable driver
-    digitalWrite(EN_PIN, LOW);  // hardware
+    digitalWrite(EN_PIN, LOW);
 
-    while (result != 0 && ++attempt < MAX_RETRIES) {
-        result = driver.test_connection();
-        if (result != 0) {
-            delay(500);
-        }
-    }
-
-    // let host know
-    // 0 = OK, 1/2 = fault
-    if (result != 0) {
-        Serial.println(F("err: TMC2209 driver failed to connect"));
-    }
-
+    // init driver
     driver.begin();                 // SPI: Init CS pins and possible SW SPI pins
     driver.I_scale_analog(0);       // Set current source to UART over vref potentiometer
     driver.toff(5);                 // Enables driver in software
     driver.rms_current(750, 0.5);   // Set motor RMS current and holding current percentage
     driver.microsteps(16);          // Set microsteps to 1/16th
-
     driver.en_spreadCycle(false);   // Toggle spreadCycle on TMC2208/2209/2224
     driver.pwm_autoscale(true);     // Needed for stealthChop
     //driver.SGTHRS(0);               // set stall threshold to 0 — disables stall protection
+
+    do {
+        result = driver.test_connection();
+        if (result != 0) {
+            delay(500);
+        }
+    } while (result != 0 && ++attempt < MAX_RETRIES);
+
+    // let host know
+    // 0 = OK, 1/2 = fault
+    if (result != 0) {
+        Serial.println(F("err: TMC2209 driver failed to connect"));
+        return;
+    }
 
     // adjust how many steps needed for a single revolution based on configured microsteps
     uint16_t ms = driver.microsteps();
@@ -46,12 +53,11 @@ void handshake(stateStruct* data, TMC2209Stepper& driver, AccelStepper& stepper)
     STEPS_PER_REV = 200 * ms;
 
     // configure speed and acceleration
-    stepper.setMaxSpeed(data->maxSpeed);    // 1000
-    stepper.setAcceleration(data->accel);   // 15000
+    stepper.setMaxSpeed(data->maxSpeed);    // 3200
+    stepper.setAcceleration(data->accel);   // 6400
 
     // update connected status
     data->isConnected = true;
-
     Serial.println(F("ok: ArduFocuser_1.0"));
 }
 
@@ -183,14 +189,3 @@ void setCurrentPosition(stateStruct* data, AccelStepper& stepper) {
     Serial.println(data->cmd.machine.I);
 }
 
-void moveRelative(long relative, AccelStepper& stepper) {
-    stepper.move(relative);
-    Serial.print(F("ok: moving "));
-    Serial.println(relative);
-}
-
-void moveAbsolute(long targetPosition, AccelStepper& stepper) {
-    stepper.moveTo(targetPosition);
-    Serial.print(F("ok: moving to "));
-    Serial.println(targetPosition);
-}

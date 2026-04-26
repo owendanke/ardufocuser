@@ -6,7 +6,6 @@
 #include <Arduino.h>
 #include <TMCStepper.h>
 #include <AccelStepper.h>
-#include <MemoryFree.h>
 
 #include "commands.h"
 #include "handlers.h"
@@ -19,33 +18,27 @@
 #define DRIVER_ADDRESS 0b00 // TMC2209 Driver address according to MS1 and MS2
 #define SERIAL_PORT Serial1 // UART serial for TMC2209
 
-#define R_SENSE 0.11f // Match to your driver
-                      // SilentStepStick series use 0.11
+// Match to your drive
+// SilentStepStick series use 0.11
+#define R_SENSE 0.11f 
+
+#define BUFFER_LENGTH 64
 
 // Set stepper driver type
 TMC2209Stepper driver(&SERIAL_PORT, R_SENSE, DRIVER_ADDRESS);       // Hardware Serial
 AccelStepper stepper(AccelStepper::DRIVER, STEP_PIN, DIR_PIN);
 
-/**
- * How many steps needed to make one revolution
- * 1.8 degrees/step * 1 revlotion/360 degrees = 200 steps/revolution
- * This must be multiplied by microsteps before being used
- */
-uint32_t STEPS_PER_REV = 200;
-
-char inputBuffer[64];
+char inputBuffer[BUFFER_LENGTH];
 uint8_t bufferIndex = 0;
 
 bool dir = false;
 uint32_t stepsToMove;
 uint32_t currentStep = 0;
 
-//singleton& focuserData = singleton::getInstance();
-stateStruct* focuserData = NULL;
+static stateStruct focuserDataObj;
+static stateStruct* const focuserData = &focuserDataObj;
 
 void setup() {
-  focuserData = (stateStruct*) malloc(sizeof(stateStruct));
-
   pinMode(EN_PIN, OUTPUT);
   pinMode(STEP_PIN, OUTPUT);
   pinMode(DIR_PIN, OUTPUT);
@@ -54,59 +47,35 @@ void setup() {
   digitalWrite(EN_PIN, HIGH);
 
   // Enable Serial for usb and Serial1
+  // SPI.begin();
   Serial.begin(9600);             // usb serial
   SERIAL_PORT.begin(115200);      // HW UART drivers  
 
   // Flush any garbage in the buffer before handshake
+  while(!Serial);
   delay(100);  // give USB stack time to settle
-  // while (Serial.available()) Serial.read();
-
-  /* -- handshake loop -- */
-  // blocking loop
-  while (true) {
-    if (Serial.available()) {
-      char c = Serial.read();
-      if (c == '\n' || c == '\r') {
-        if (bufferIndex > 0) {
-          inputBuffer[bufferIndex] = '\0';
-
-          focuserData->cmd = parseCommand(inputBuffer);
-          bufferIndex = 0;
-
-          // check if command is handshake
-          if (focuserData->cmd.machine.code == M1) {
-            handleCommand(focuserData, driver, stepper);
-            break;
-          }
-          else {
-            Serial.println(F("err: invalid handshake, send M1"));  
-          }
-        }
-      } else if (bufferIndex < 31) {
-        inputBuffer[bufferIndex++] = c;
-      }
-    }
-  }
 }
 
 void loop() {
-  // Non-blocking serial read
-  while (Serial.available()) {
+  if (Serial.available() > 0) {
     char c = Serial.read();
-    if (c == '\n' || c == '\r') {
+    if ((c == '\r') && bufferIndex < (BUFFER_LENGTH - 1)) bufferIndex++;  // ignore carriage return
+    if (c == '\n') {
       if (bufferIndex > 0) {
-        inputBuffer[bufferIndex] = '\0';
+        inputBuffer[bufferIndex] = '\0';  // terminate string
 
-        focuserData->cmd = parseCommand(inputBuffer);
-        bufferIndex = 0;
+        focuserData->cmd = parseCommand(inputBuffer);   // parse command
+
+        if (!validateCommand(focuserData->cmd)) {
+          bufferIndex = 0;
+          return;  // error already printed by validateCommand
+        }
 
         // always accept machine commands
         if (focuserData->cmd.word == WORD_M) {
           handleCommand(focuserData, driver, stepper);
-          Serial.print(F("Free RAM: "));
-          Serial.println(freeMemory());
         }
-
+        
         // only accept motion if focuser is connected
         else if (focuserData->isConnected && focuserData->cmd.word == WORD_G) {
           handleCommand(focuserData, driver, stepper);
@@ -114,12 +83,13 @@ void loop() {
         else {
           Serial.println(F("err: focuser not connected, send M1"));  
         }
+
+        bufferIndex = 0;
       }
-    } else if (bufferIndex < 31) {
+    } else if (bufferIndex < (BUFFER_LENGTH - 1)) {
       inputBuffer[bufferIndex++] = c;
     }
   }
 
-  // Must be called every loop - non-blocking
-    stepper.run();
+  stepper.run();
 }
