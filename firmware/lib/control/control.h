@@ -16,8 +16,6 @@ void disconnect(stateStruct*, TMC2209Stepper&, AccelStepper&);
 
 void reportDriverStatus(TMC2209Stepper&);
 
-void queryPosition(AccelStepper&);
-
 void queryDistanceToGo(AccelStepper&);
 
 void setMicrosteps(stateStruct*, TMC2209Stepper&);

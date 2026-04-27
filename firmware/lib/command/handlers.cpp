@@ -19,10 +19,23 @@ void handleMachineCmd(stateStruct* data, TMC2209Stepper& driver, AccelStepper& s
       reportDriverStatus(driver);
       break;
     case M5:
-      queryPosition(stepper);
+      Serial.print(F("ok: position = "));
+      Serial.println(stepper.currentPosition());
       break;
     case M6:
       queryDistanceToGo(stepper);
+      break;
+    case M7:
+      Serial.print(F("ok: maximum speed: "));
+      Serial.println(data->maxSpeed);
+      break;
+    case M8:
+    Serial.print(F("ok: acceleration: "));
+      Serial.println(data->accel);
+      break;
+    case M9:
+      Serial.print(F("ok: maximum steps: "));
+      Serial.println(data->maxPos);
       break;
     case M10:
       setMicrosteps(data, driver);
@@ -39,6 +52,16 @@ void handleMachineCmd(stateStruct* data, TMC2209Stepper& driver, AccelStepper& s
     case M14:
       setCurrentPosition(data, stepper);
       break;
+    case M15:
+      if (data->cmd.machine.I < 1) {
+        Serial.println(F("err: steps must be positive"));
+        break;
+      }
+      
+      data->maxPos = data->cmd.machine.I;
+      Serial.print(F("ok: set maximum steps: "));
+      Serial.println(data->maxPos);
+      break;
     case M99:
       stepper.stop();
       Serial.println(F("ok: stopped"));
@@ -52,14 +75,23 @@ void handleMachineCmd(stateStruct* data, TMC2209Stepper& driver, AccelStepper& s
   }
 }
 
-void handleMotionCmd(const MotionCmd& cmd, AccelStepper& stepper) {
+void handleMotionCmd(stateStruct* data, AccelStepper& stepper) {
+  const MotionCmd& cmd = data->cmd.motion;
   switch (cmd.code) {
     case G0:
+      if((stepper.currentPosition() + cmd.P) > data->maxPos) {
+        Serial.println(F("err: movement exceeds max position"));
+        break;
+      }
       stepper.move(cmd.P);
       Serial.print(F("ok: moving "));
       Serial.println(cmd.P);
       break;
     case G1:
+      if(cmd.P > data->maxPos) {
+        Serial.println(F("err: movement exceeds max position"));
+        break;
+      }
       stepper.moveTo(cmd.P);
       Serial.print(F("ok: moving to "));
       Serial.println(cmd.P);
@@ -79,7 +111,7 @@ void handleCommand(stateStruct* data, TMC2209Stepper& driver, AccelStepper& step
       handleMachineCmd(data, driver, stepper);
       break;
     case WORD_G: 
-      handleMotionCmd(data->cmd.motion, stepper);
+      handleMotionCmd(data, stepper);
       break;
     case WORD_UNKNOWN:
       Serial.println(F("err: unknown command"));

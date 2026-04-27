@@ -229,7 +229,7 @@ bool ArduFocuser::AbortFocuser() {
     // if focuser acknowledges abort command, set true
     if (strncmp("ok: stop", response, 8) == 0)
     {
-        LOG_INFO("focuser movement stopped.");
+        LOG_INFO("focuser stopping movement");
         //FocusRelPosNP.setState(IPS_OK);
         //FocusRelPosNP.apply();
         return true;
@@ -262,6 +262,38 @@ bool ArduFocuser::SyncFocuser(uint32_t ticks) {
     // if focuser acknowledges move command, set IPS_BUSY
     if (strncmp("ok: set", response, 7) == 0)
     {
+        LOGF_INFO("Focuser response: %s", response);
+        return true;
+    }
+
+    LOGF_ERROR("Unexpected response: %s", response);
+    return false;
+}
+
+bool ArduFocuser::SetFocuserMaxPosition(uint32_t ticks) {
+    char cmdToSend[32] = {0};
+    char response[64] = {0};
+
+    // build the relative movement command
+    strcpy(cmdToSend, SerialCodes::setMaximumPosition);
+    strcat(cmdToSend, " I");
+    strcat(cmdToSend, std::to_string(ticks).c_str());
+    strcat(cmdToSend, "\n");
+
+    LOGF_INFO("Sending command: %s", cmdToSend);
+
+
+    // send move message to focuser
+    if (!sendCommand(cmdToSend, response, sizeof(response)))
+    {
+        LOG_ERROR("Focuser sync failed: could not send command");
+        return false;
+    }
+
+    // if focuser acknowledges move command, set IPS_BUSY
+    if (strncmp("ok: set", response, 7) == 0)
+    {
+        LOGF_INFO("Focuser response: %s", response);
         return true;
     }
 

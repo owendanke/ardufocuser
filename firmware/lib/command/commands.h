@@ -40,11 +40,15 @@ enum MachineCommands {
   M4,   // Report driver status
   M5,   // Report current position
   M6,   // Report steps until target position
+  M7,   // Report current speed
+  M8,   // Report current acceleration
+  M9,   // Report current max position
   M10,  // Set microsteps, expects integer arguement I<microsteps>
   M11,  // Set speed, expects integer arguement I<steps/sec>
   M12,  // Set acceleration, expects integer arguement I<steps/sec/sec>
   M13,  // Set zero position
   M14,  // Set current position, expects integer arguement I<steps>
+  M15,  // Set maximum position, expects integer arguement I<steps>
   M99,  // Unconditional stop
 };
 
@@ -60,7 +64,7 @@ enum MotionCommands {
 
 struct MachineCmd {
   MachineCommands code;
-  int I;  // integer parameter
+  long I;  // integer parameter
   bool hasI;
 };
 

@@ -59,15 +59,16 @@ void setup() {
 void loop() {
   if (Serial.available() > 0) {
     char c = Serial.read();
-    if ((c == '\r') && bufferIndex < (BUFFER_LENGTH - 1)) bufferIndex++;  // ignore carriage return
+    if (c == '\r') return;  // ignore carriage return
     if (c == '\n') {
       if (bufferIndex > 0) {
         inputBuffer[bufferIndex] = '\0';  // terminate string
 
         focuserData->cmd = parseCommand(inputBuffer);   // parse command
 
+        bufferIndex = 0;
+
         if (!validateCommand(focuserData->cmd)) {
-          bufferIndex = 0;
           return;  // error already printed by validateCommand
         }
 
@@ -83,8 +84,6 @@ void loop() {
         else {
           Serial.println(F("err: focuser not connected, send M1"));  
         }
-
-        bufferIndex = 0;
       }
     } else if (bufferIndex < (BUFFER_LENGTH - 1)) {
       inputBuffer[bufferIndex++] = c;

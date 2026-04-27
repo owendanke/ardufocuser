@@ -30,11 +30,15 @@ static const MachineCommandDef machineDefs[] = {
   { M4,  PARAM_NONE },
   { M5,  PARAM_NONE },
   { M6,  PARAM_NONE },
+  { M7,  PARAM_NONE },
+  { M8,  PARAM_NONE },
+  { M9,  PARAM_NONE },
   { M10, PARAM_I },
   { M11, PARAM_I },
   { M12, PARAM_I },
   { M13, PARAM_NONE },
   { M14, PARAM_I },
+  { M15, PARAM_I },
   { M99, PARAM_NONE },
 };
 
@@ -43,10 +47,13 @@ static const MachineCommandDef machineDefs[] = {
 */
 Command parseCommand(const char* raw) {
   Command cmd;
-  cmd.word          = WORD_UNKNOWN;
-  cmd.machine.code  = M_UNKNOWN;
-  cmd.motion.code   = G_UNKNOWN;
-  cmd.motion.P      = 0;
+  cmd.word         = WORD_UNKNOWN;
+  cmd.machine.code = M_UNKNOWN;
+  cmd.machine.I    = 0;
+  cmd.machine.hasI = false;
+  cmd.motion.code  = G_UNKNOWN;
+  cmd.motion.P     = 0;
+  cmd.motion.hasP  = false;
 
   uint8_t len = strlen(raw);  // calculate once
 
@@ -138,11 +145,15 @@ MachineCommands parseMachineCode(int code) {
     case 4:  return M4;
     case 5:  return M5;
     case 6:  return M6;
+    case 7:  return M7;
+    case 8:  return M8;
+    case 9:  return M9;
     case 10: return M10;
     case 11: return M11;
     case 12: return M12;
     case 13: return M13;
     case 14: return M14;
+    case 15: return M15;
     case 99: return M99;
     default: return M_UNKNOWN;
   }

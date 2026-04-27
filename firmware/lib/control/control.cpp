@@ -95,11 +95,6 @@ void reportDriverStatus(TMC2209Stepper& driver) {
     Serial.println(driver.SGTHRS());
 }
 
-void queryPosition(AccelStepper& stepper) {
-    Serial.print(F("ok: position = "));
-    Serial.println(stepper.currentPosition());
-}
-
 void queryDistanceToGo(AccelStepper& stepper) {
     long distanceToGo = stepper.distanceToGo();
 

@@ -94,6 +94,14 @@ class ArduFocuser : public INDI::Focuser
          */
         bool SyncFocuser(uint32_t) override;
 
+        /**
+         * Set Focuser Maximum position limit in the hardware.
+         * @param ticks maximum steps permitted
+         * @return True if successful, false otherwise.
+         * @note If setting maximum position limit in the hardware is not available or not supported, do not override this function as the default
+         * implementation will always return true.
+         */
+        bool SetFocuserMaxPosition(uint32_t) override;
 
     private:
         /**

@@ -32,6 +32,9 @@ typedef struct SerialCodes {
     // sync the focuser to the current position (in steps)
     static constexpr const char* setCurrentPosition = "M14";
 
+    // set the focuser maximum position (in steps)
+    static constexpr const char* setMaximumPosition = "M15";
+
     // immedietly stop any focuser movement
     static constexpr const char* unconditionalStop = "M99\n";
 
