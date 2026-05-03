@@ -19,7 +19,7 @@ void handleMachineCmd(stateStruct* data, TMC2209Stepper& driver, AccelStepper& s
       reportDriverStatus(driver);
       break;
     case M5:
-      Serial.print(F("ok: position = "));
+      Serial.print(F("ok: pos: "));
       Serial.println(stepper.currentPosition());
       break;
     case M6:
@@ -59,7 +59,7 @@ void handleMachineCmd(stateStruct* data, TMC2209Stepper& driver, AccelStepper& s
       }
       
       data->maxPos = data->cmd.machine.I;
-      Serial.print(F("ok: set maximum steps: "));
+      Serial.print(F("ok: set max steps = "));
       Serial.println(data->maxPos);
       break;
     case M99:
@@ -93,7 +93,7 @@ void handleMotionCmd(stateStruct* data, AccelStepper& stepper) {
         break;
       }
       stepper.moveTo(cmd.P);
-      Serial.print(F("ok: moving to "));
+      Serial.print(F("ok: moving to: "));
       Serial.println(cmd.P);
       break;
     case G_UNKNOWN:

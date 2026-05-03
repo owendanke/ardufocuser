@@ -56,8 +56,14 @@ bool ArduFocuser::updateProperties() {
     // update the parent's properties first
     INDI::Focuser::updateProperties();
 
-    // Connection
-    // defineProperty()
+    if (isConnected()) {
+        // deleteProperty(UseJoystickSP.name);
+        deleteProperty("USEJOYSTICK");
+        // deleteProperty(JoystickSettingTP.name);
+        deleteProperty("JOYSTICKSETTINGS");
+        // deleteProperty(JoystickDeviceTP.name);
+        deleteProperty("SNOOP_JOYSTICK");
+    }
 
     return true;
 }
@@ -114,7 +120,7 @@ void ArduFocuser::TimerHit()
         return;
 
     // Only poll the focuser if currently moving
-    if (FocusRelPosNP.getState() == IPS_BUSY) {
+    if (FocusRelPosNP.getState() == IPS_BUSY || FocusAbsPosNP.getState() == IPS_BUSY) {
         char response[64] = {0};
 
         // Ask focuser if move has finished
@@ -123,17 +129,29 @@ void ArduFocuser::TimerHit()
 
             FocusRelPosNP.setState(IPS_ALERT);
             FocusRelPosNP.apply();
+            FocusAbsPosNP.setState(IPS_ALERT);
+            FocusAbsPosNP.apply();
         }
         else if (strncmp("ok: done", response, 8) == 0) {
             LOG_INFO("Focuser move complete");
 
+            // ArduFocuser responds with: "ok: done. pos: ", skip this
+            uint32_t currentPos = atoi(response + 15);
+            FocusAbsPosNP[0].setValue(currentPos);
+
             FocusRelPosNP.setState(IPS_OK);
             FocusRelPosNP.apply();
+
+            FocusAbsPosNP.setState(IPS_OK);
+            FocusAbsPosNP.apply();
         }
         else if (strncmp("err", response, 3) == 0) {
             LOGF_ERROR("Focuser error: %s", response);
+
             FocusRelPosNP.setState(IPS_ALERT);
             FocusRelPosNP.apply();
+            FocusAbsPosNP.setState(IPS_ALERT);
+            FocusAbsPosNP.apply();
         }
         // if still moving then check again next tick
     }
@@ -198,15 +216,15 @@ IPState ArduFocuser::MoveAbsFocuser(uint32_t targetTicks) {
     // send move message to focuser
     if (!sendCommand(cmdToSend, response, sizeof(response)))
     {
-        LOG_ERROR("Relative move failed: could not send command");
+        LOG_ERROR("Absolute move failed: could not send command");
         return IPS_ALERT;
     }
 
     // if focuser acknowledges move command, set IPS_BUSY
     if (strncmp("ok: moving to", response, 13) == 0)
     {
-        FocusRelPosNP.setState(IPS_BUSY);
-        FocusRelPosNP.apply();
+        FocusAbsPosNP.setState(IPS_BUSY);
+        FocusAbsPosNP.apply();
         return IPS_BUSY;
     }
 
@@ -262,7 +280,12 @@ bool ArduFocuser::SyncFocuser(uint32_t ticks) {
     // if focuser acknowledges move command, set IPS_BUSY
     if (strncmp("ok: set", response, 7) == 0)
     {
-        LOGF_INFO("Focuser response: %s", response);
+        
+        // ArduFocuser responds with: "ok: set pos = ", skip this
+        uint32_t currentPos = atoi(response + 14);
+        FocusSyncNP[0].setValue(currentPos);
+
+        LOGF_INFO("Focuser synced: %s", response);
         return true;
     }
 
@@ -293,7 +316,11 @@ bool ArduFocuser::SetFocuserMaxPosition(uint32_t ticks) {
     // if focuser acknowledges move command, set IPS_BUSY
     if (strncmp("ok: set", response, 7) == 0)
     {
-        LOGF_INFO("Focuser response: %s", response);
+        // ArduFocuser responds with: "ok: set max steps = ", skip this
+        uint32_t currentPos = atoi(response + 20);
+        FocusMaxPosNP[0].setValue(currentPos);
+
+        LOGF_INFO("Max position set: %s", response);
         return true;
     }
 
@@ -306,7 +333,9 @@ bool ArduFocuser::SetFocuserMaxPosition(uint32_t ticks) {
 bool ArduFocuser::Handshake(){
 
     char response[64] = {0};
-    
+
+    sleep(2);
+
     if (!sendCommand(SerialCodes::connect, response, sizeof(response))) {
         LOG_ERROR("Handshake failed: could not send command");
 
@@ -319,9 +348,15 @@ bool ArduFocuser::Handshake(){
         return false;
     }
 
-    LOGF_INFO("Handshake successful. Device replied: %s", response);
+    if (strncmp("ok: Ardu", response, 8) == 0) {
+        LOGF_INFO("Handshake successful. Device replied: %s", response);
 
-    return true;
+        return true;
+    }
+
+    LOGF_INFO("Handshake faild. Device replied: %s", response);
+
+    return false;
 }
 
 bool ArduFocuser::sendCommand(const char *command, char *response, int responseLength) {

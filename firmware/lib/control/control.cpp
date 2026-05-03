@@ -99,11 +99,11 @@ void queryDistanceToGo(AccelStepper& stepper) {
     long distanceToGo = stepper.distanceToGo();
 
     if (stepper.isRunning()) {
-        Serial.print(F("ok: moving = "));
+        Serial.print(F("ok: moving: "));
         Serial.println(distanceToGo);
     }
     else {
-        Serial.print(F("ok: done. position = "));
+        Serial.print(F("ok: done. pos: "));
         Serial.println(stepper.currentPosition());
     }
 }
@@ -130,14 +130,14 @@ void setMicrosteps(stateStruct* data, TMC2209Stepper& driver) {
 
     if (!valid) {
         // If no valid match was found, print an error message
-        Serial.print(F("err: Invalid microsteps value "));
+        Serial.print(F("err: Invalid microsteps: "));
         Serial.println(data->cmd.machine.I);
     }
 }
 
 void setSpeed(stateStruct* data, AccelStepper& stepper) {
     if (data->cmd.machine.I < 1) {
-        Serial.print(F("err: Invalid speed value "));
+        Serial.print(F("err: Invalid speed: "));
         Serial.println(data->cmd.machine.I);
     }
     else {
@@ -150,7 +150,7 @@ void setSpeed(stateStruct* data, AccelStepper& stepper) {
 
 void setAccel(stateStruct* data, AccelStepper& stepper) {
     if (data->cmd.machine.I < 1) {
-        Serial.print(F("err: Invalid accel value "));
+        Serial.print(F("err: Invalid accel: "));
         Serial.println(data->cmd.machine.I);
     }
     else {
@@ -169,7 +169,7 @@ void setZeroPosition(stateStruct* data, AccelStepper& stepper) {
     stepper.setCurrentPosition(0);
     stepper.setMaxSpeed(data->maxSpeed);
     stepper.setAcceleration(data->accel);
-    Serial.println(F("ok: reset zero position"));
+    Serial.println(F("ok: set zero pos"));
 }
 
 void setCurrentPosition(stateStruct* data, AccelStepper& stepper) {
@@ -180,7 +180,7 @@ void setCurrentPosition(stateStruct* data, AccelStepper& stepper) {
     stepper.setCurrentPosition(data->cmd.machine.I);
     stepper.setMaxSpeed(data->maxSpeed);
     stepper.setAcceleration(data->accel);
-    Serial.print(F("ok: set position "));
-    Serial.println(data->cmd.machine.I);
+    Serial.print(F("ok: set pos = "));
+    Serial.println(stepper.currentPosition());
 }
 
